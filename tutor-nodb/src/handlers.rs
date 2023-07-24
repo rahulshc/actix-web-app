@@ -1,4 +1,6 @@
 use super::state::AppState;
+use super::models::Course;
+use chrono::Utc;
 use actix_web::{web, HttpResponse};
 
 pub async fn health_check_handler(app_state: web::Data<AppState>) -> 
@@ -8,4 +10,28 @@ pub async fn health_check_handler(app_state: web::Data<AppState>) ->
         let response = format!("{} {}", health_check_response, visit_count);
         *visit_count +=1;
         HttpResponse::Ok().json(&response)
+}
+
+pub async fn new_course( new_course: web::Json<Course>, 
+    app_state: web::Data<AppState>) -> HttpResponse {
+        println!("Received new course");
+        let course_count_for_user = app_state
+        .courses
+        .lock()
+        .unwrap()
+        //.clone()
+        //.into_iter()
+        .iter()
+        .filter(|course| course.tutor_id == new_course.tutor_id)
+        .count();
+
+    let new_course = Course {
+        tutor_id: new_course.tutor_id,
+        course_id: Some(course_count_for_user + 1 ),
+        course_name: new_course.course_name.clone(),
+        posted_time: Some(Utc::now().naive_utc()),
+    };
+
+    app_state.courses.lock().unwrap().push(new_course);
+    HttpResponse::Ok().json("Added Course")
     }
